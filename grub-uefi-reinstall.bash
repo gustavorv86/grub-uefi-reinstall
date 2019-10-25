@@ -28,14 +28,20 @@ echo "grub-install"                                         >> ${TARGET}/install
 echo "update-grub"                                          >> ${TARGET}/install.sh
 echo ""                                                     >> ${TARGET}/install.sh
 echo "efibootmgr --verbose"                                 >> ${TARGET}/install.sh
-echo "exit"                                                 >> ${TARGET}/install.sh
+echo "echo"                                                 >> ${TARGET}/install.sh
+echo "echo 'Install finished'"                              >> ${TARGET}/install.sh
+echo "echo"                                                 >> ${TARGET}/install.sh
 
+chmod a+x ${TARGET}/install.sh
+
+echo
+echo
 echo "Chroot: ${TARGET}"
 echo "Linux partiton: ${LINUX_PARTITION}"
 echo "EFI partition: ${EFI_PARTITION}"
 echo
-echo "Execute the next script:"
-echo "./install.sh"
+echo "Execute the next command:"
+echo "./install.sh; exit"
 echo
 
 chroot ${TARGET}

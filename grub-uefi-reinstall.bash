@@ -1,7 +1,13 @@
 #!/bin/bash
 
+## TODO: Check efi and linux partition automatically
+
+## Edit this configuration
+
 LINUX_PARTITION=/dev/sdb1
 EFI_PARTITION=/dev/sda2
+
+## End configuration
 
 TARGET=/media/linux
 
@@ -44,3 +50,4 @@ umount ${TARGET}
 
 echo "Done"
 echo
+

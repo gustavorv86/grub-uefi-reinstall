@@ -1,15 +1,19 @@
 #!/bin/bash
 
-## TODO: Check efi and linux partition automatically
-
-## Edit this configuration
+## Edit this configuration ##
 
 LINUX_PARTITION=/dev/sdb1
 EFI_PARTITION=/dev/sda2
 
-## End configuration
+## End configuration ##
 
 TARGET=/media/linux
+CHROOT_INSTALLER=${TARGET}/grub-reinstall.bash
+
+if [[ $UID -ne 0 ]]; then
+	echo "Run as root..."
+	exit 1
+fi
 
 mkdir -p ${TARGET}
 mount ${LINUX_PARTITION} ${TARGET}
@@ -19,20 +23,18 @@ mount --bind /sys ${TARGET}/sys
 mount --bind /proc ${TARGET}/proc
 mount --bind /dev ${TARGET}/dev
 
-## TODO: Check ${EFI_PARTITION} UUID and ${TARGET}/etc/fstab EFI UUID
+echo "#!/bin/bash"                                          >  ${CHROOT_INSTALL}
+echo "mount -t efivarfs efivarfs /sys/firmware/efi/efivars" >> ${CHROOT_INSTALL}
+echo "rm -f /sys/firmware/efi/efivars/dump-* &> /dev/null"  >> ${CHROOT_INSTALL}
+echo "grub-install"                                         >> ${CHROOT_INSTALL}
+echo "update-grub"                                          >> ${CHROOT_INSTALL}
+echo ""                                                     >> ${CHROOT_INSTALL}
+echo "efibootmgr --verbose"                                 >> ${CHROOT_INSTALL}
+echo "echo"                                                 >> ${CHROOT_INSTALL}
+echo "echo 'Install finished'"                              >> ${CHROOT_INSTALL}
+echo "echo"                                                 >> ${CHROOT_INSTALL}
 
-echo "#!/bin/bash"                                          >  ${TARGET}/install.sh
-echo "mount -t efivarfs efivarfs /sys/firmware/efi/efivars" >> ${TARGET}/install.sh
-echo "rm /sys/firmware/efi/efivars/dump-* &> /dev/null"     >> ${TARGET}/install.sh
-echo "grub-install"                                         >> ${TARGET}/install.sh
-echo "update-grub"                                          >> ${TARGET}/install.sh
-echo ""                                                     >> ${TARGET}/install.sh
-echo "efibootmgr --verbose"                                 >> ${TARGET}/install.sh
-echo "echo"                                                 >> ${TARGET}/install.sh
-echo "echo 'Install finished'"                              >> ${TARGET}/install.sh
-echo "echo"                                                 >> ${TARGET}/install.sh
-
-chmod a+x ${TARGET}/install.sh
+chmod a+x ${CHROOT_INSTALL}
 
 echo
 echo
@@ -40,20 +42,21 @@ echo "Chroot: ${TARGET}"
 echo "Linux partiton: ${LINUX_PARTITION}"
 echo "EFI partition: ${EFI_PARTITION}"
 echo
-echo "Execute the next command:"
-echo "./install.sh; exit"
+echo "Execute the next commands:"
+echo "./"`basename ${CHROOT_INSTALL}`"; exit"
 echo
 
 chroot ${TARGET}
-## ./install.sh executed by the user
-rm -f ${TARGET}/install.sh
+## CHROOT_INSTALLER executed by the user and exit...
+rm -f ${CHROOT_INSTALLER}
 
-umount ${TARGET}/dev
-umount ${TARGET}/proc
-umount ${TARGET}/sys
-umount ${TARGET}/boot/efi
+umount ${TARGET}/dev       &> /dev/null
+umount ${TARGET}/proc      &> /dev/null
+umount ${TARGET}/sys       &> /dev/null
+umount ${TARGET}/boot/efi  &> /dev/null
 umount ${TARGET}
 
 echo "Done"
 echo
 
+exit 0

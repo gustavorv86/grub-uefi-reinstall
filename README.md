@@ -1,6 +1,6 @@
 # grub-uefi-reinstall
 
-Script to reinstall GRUB from Live CD/USB
+Script to reinstall GRUB from Live CD/USB after install Windows 10/11.
 
 ## Instructions
 

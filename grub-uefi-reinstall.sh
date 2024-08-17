@@ -1,13 +1,28 @@
 #!/bin/bash
 
-
 ROOTDIR="/mnt/linux"
 MOUNTLIST="/dev /dev/pts /proc /sys /sys/firmware/efi/efivars /run"
 
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+RESET=$(tput sgr0)
+
+linfo() {
+	echo -e "$GREEN[+]$RESET $@"
+}
+
+lwarn() {
+	echo -e "$YELLOW[!]$RESET $@"
+}
+
+lerror() {
+	echo -e "$RED[-]$RESET $@"
+}
 
 mount_list() {
 	for i in $MOUNTLIST; do
-		echo "[+] mount $i in ${ROOTDIR}${i}."
+		linfo "mount $i in ${ROOTDIR}${i}."
 		mount --bind "$i" "${ROOTDIR}${i}"
 	done
 
@@ -17,51 +32,51 @@ mount_list() {
 
 umount_list() {
 	for i in $MOUNTLIST; do
-		echo "[+] umount ${ROOTDIR}${i}."
+		linfo "umount ${ROOTDIR}${i}."
 		umount "${ROOTDIR}${i}"
 	done
 }
 
 
 main() {
-	local linuxpart
-	local efipart
-	local newefiuuid
-	local oldefiuuid
+	local partlinux
+	local partefi
+	local efiuuidnew
+	local efiuuidold
 
 	clear
 
 	echo ""
-	echo "[+] ---- "$(basename $0)" ----"
+	linfo "---- "$(basename $0)" ----"
 	echo ""
 
 	if [ $UID -ne 0 ]; then
-		echo "[-] Run as root."
+		lerror "run as root."
 		exit 1
 	fi
 
-	echo "[+] information."
+	linfo "information."
 	blkid | grep -vF "/dev/loop"
 	echo ""
 
-	read -p "[?] Enter the EFI partition (example: /dev/sda1): " efipart
-	read -p "[?] Enter the Linux root partition (example: /dev/sda2): " linuxpart
+	read -p "[?] enter the EFI partition (example: /dev/sda1): " partefi
+	read -p "[?] enter the Linux root partition (example: /dev/sda2): " partlinux
 
-	echo "[+] mount root partition $ROOTDIR."
+	linfo "mount root partition $ROOTDIR."
 	mkdir -p "$ROOTDIR"
-	mount "$linuxpart" "$ROOTDIR"
+	mount "$partlinux" "$ROOTDIR"
 
 	if [ ! -d "$ROOTDIR/boot/efi" ]; then
-		echo "[-] partition $linuxpart is not a linux partition."
+		lerror "partition $partlinux is not a linux partition."
 		umount "$ROOTDIR"
 		exit 1
 	fi
 
-	echo "[+] mount EFI partition."
-	mount "$efipart" "$ROOTDIR/boot/efi"
+	linfo "mount EFI partition."
+	mount "$partefi" "$ROOTDIR/boot/efi"
 
 	if [ ! -d "$ROOTDIR/boot/efi/EFI" ]; then
-		echo "[-] partition $efipart is not an EFI partition."
+		lerror "partition $partefi is not an EFI partition."
 		umount "$ROOTDIR/boot/efi"
 		umount "$ROOTDIR"
 		exit 1
@@ -69,33 +84,33 @@ main() {
 
 	mount_list
 
-	newefiuuid=$(blkid | grep -F "$efipart" | cut -d" " -f2 | cut -d"=" -f2 | tr '"' ' ' | xargs)
-	if [ ! "$newefiuuid" ]; then
-		echo "[-] cannot read EFI UUID in $efipart."
+	efiuuidnew="$(blkid | grep -F "$partefi" | cut -d" " -f2 | cut -d"=" -f2 | tr '"' ' ' | xargs)"
+	if [ ! "$efiuuidnew" ]; then
+		lerror "cannot read EFI UUID in $partefi."
 		umount_list
 		umount "$ROOTDIR/boot/efi"
 		umount "$ROOTDIR"
 		exit 1
 	fi
-	echo "[+] current EFI uuid: $newefiuuid."
+	linfo "current EFI uuid: $efiuuidnew."
 
-	oldefiuuid=$(cat "$ROOTDIR/etc/fstab" | grep -vF '#' | grep -F "/boot/efi" | cut -d' ' -f1 | cut -d"=" -f2 | xargs)
-	if [ ! "$oldefiuuid" ]; then
-		echo "[-] cannot read EFI UUID in $ROOTDIR/etc/fstab."
+	efiuuidold="$(cat "$ROOTDIR/etc/fstab" | grep -vF '#' | grep -F "/boot/efi" | cut -d' ' -f1 | cut -d"=" -f2 | xargs)"
+	if [ ! "$efiuuidold" ]; then
+		lerror "cannot read EFI UUID in $ROOTDIR/etc/fstab."
 		umount_list
 		umount "$ROOTDIR/boot/efi"
 		umount "$ROOTDIR"
 		exit 1
 	fi
-	echo "[+] old EFI uuid in $linuxpart: $oldefiuuid."
+	linfo "old EFI uuid in $partlinux: $efiuuidold."
 
-	if [ "$newefiuuid" != "$oldefiuuid" ]; then
-		echo "[+] replace $oldefiuuid by $newrfiuuid in $ROOTDIR/etc/fstab."
-		sed -i "s#$oldefiuuid#$newefiuuid#g" "$ROOTDIR/etc/fstab"
+	if [ "$efiuuidnew" != "$efiuuidold" ]; then
+		linfo "replace $efiuuidold by $newrfiuuid in $ROOTDIR/etc/fstab."
+		sed -i "s#$efiuuidold#$efiuuidnew#g" "$ROOTDIR/etc/fstab"
 	fi
 
-	echo "[+] chroot in $ROOTDIR."
-	echo "[!] Execute this command into the chroot:"
+	linfo "chroot in $ROOTDIR."
+	lwarn "execute the next command into the chroot:"
 	echo ""
 	echo "    grub-install; update-grub; exit"
 	echo ""
@@ -103,9 +118,8 @@ main() {
 	chroot "$ROOTDIR"
 
 	echo ""
-	echo "[+] finished."
+	linfo "finished successfully."
 }
 
 main
 exit 0
-

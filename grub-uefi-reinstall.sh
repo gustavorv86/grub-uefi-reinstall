@@ -5,15 +5,10 @@ MOUNTLIST="/dev /dev/pts /proc /sys /sys/firmware/efi/efivars /run"
 
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
-YELLOW=$(tput setaf 3)
 RESET=$(tput sgr0)
 
 linfo() {
 	echo -e "$GREEN[+]$RESET $@"
-}
-
-lwarn() {
-	echo -e "$YELLOW[!]$RESET $@"
 }
 
 lerror() {
@@ -29,14 +24,12 @@ mount_list() {
 	rm -f "${ROOTDIR}"/sys/firmware/efi/efivars/dump-* &> /dev/null
 }
 
-
 umount_list() {
 	for i in $MOUNTLIST; do
 		linfo "umount ${ROOTDIR}${i}."
 		umount "${ROOTDIR}${i}"
 	done
 }
-
 
 main() {
 	local partlinux
@@ -110,12 +103,9 @@ main() {
 	fi
 
 	linfo "chroot in $ROOTDIR."
-	lwarn "execute the next command into the chroot:"
-	echo ""
-	echo "    grub-install; update-grub; exit"
-	echo ""
+	linfo "execute grub install."
 	
-	chroot "$ROOTDIR"
+	chroot "$ROOTDIR" /bin/bash -c "grub-install; update-grub; exit"
 
 	echo ""
 	linfo "finished successfully."

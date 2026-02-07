@@ -1,11 +1,13 @@
 #!/bin/bash
 
+set -e
+
 ROOTDIR="/mnt/linux"
 MOUNTLIST="/dev /dev/pts /proc /sys /sys/firmware/efi/efivars /run"
 
-RED=$(tput setaf 1)
-GREEN=$(tput setaf 2)
-RESET=$(tput sgr0)
+RED="$(tput setaf 1)"
+GREEN="$(tput setaf 2)"
+RESET="$(tput sgr0)"
 
 linfo() {
 	echo -e "$GREEN[+]$RESET $@"
@@ -48,12 +50,19 @@ main() {
 		exit 1
 	fi
 
-	linfo "information."
-	blkid | grep -vF "/dev/loop"
+	linfo "select partitions.\n"
+
+	blkid | grep -vF "/dev/loop" | grep "vfat"
 	echo ""
 
 	read -p "[?] enter the EFI partition (example: /dev/sda1): " partefi
-	read -p "[?] enter the Linux root partition (example: /dev/sda2): " partlinux
+	echo ""
+
+	blkid | grep -vF "/dev/loop" | grep "btrfs\|ext3\|ext4\|hfs\|jfs\|reiserfs\|xfs"
+	echo ""
+
+	read -p "[?] enter the Linux root partition (example: /dev/sda4): " partlinux
+	echo ""
 
 	linfo "mount root partition $ROOTDIR."
 	mkdir -p "$ROOTDIR"
@@ -98,17 +107,17 @@ main() {
 	linfo "old EFI uuid in $partlinux: $efiuuidold."
 
 	if [ "$efiuuidnew" != "$efiuuidold" ]; then
-		linfo "replace $efiuuidold by $newrfiuuid in $ROOTDIR/etc/fstab."
+		linfo "replace $efiuuidold by $efiuuidnew in $ROOTDIR/etc/fstab."
 		sed -i "s#$efiuuidold#$efiuuidnew#g" "$ROOTDIR/etc/fstab"
 	fi
 
 	linfo "chroot in $ROOTDIR."
-	linfo "execute grub install."
+	linfo "execute grub install.\n"
 	
 	chroot "$ROOTDIR" /bin/bash -c "grub-install; update-grub; exit"
 
 	echo ""
-	linfo "finished successfully."
+	linfo "finished successfully.\n"
 }
 
 main
